@@ -15,6 +15,7 @@ kernel = np.ones((5,5),np.float32)/25
 
 # Create a pipeline
 pipeline = rs.pipeline()
+pc = rs.pointcloud()
 
 # Create a config and configure the pipeline to stream
 #  different resolutions of color and depth streams
@@ -43,10 +44,10 @@ else:
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
 # Start streaming
-profile = pipeline.start(config)
+cfg = pipeline.start(config)
 
 # Getting the depth sensor's depth scale (see rs-align example for explanation)
-depth_sensor = profile.get_device().first_depth_sensor()
+depth_sensor = cfg.get_device().first_depth_sensor()
 depth_scale = depth_sensor.get_depth_scale()
 print("Depth Scale is: " , depth_scale)
 
@@ -83,10 +84,10 @@ try:
         color_image = np.asanyarray(color_frame.get_data())
 
         # Remove background - Set pixels further than clipping_distance to grey
-        mask_color = 0
-        depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
-        bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), mask_color, color_image)
-        hsv_image = cv2.cvtColor(bg_removed, cv2.COLOR_BGR2HSV)
+        # mask_color = 100
+        # depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
+        # bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), mask_color, color_image)
+        hsv_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv_image,lower,upper)
 
 
@@ -97,18 +98,44 @@ try:
         edged = cv2.Canny(img_dilation,0, 128)
         contours, hierarchy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         # #cnt = contours[4]
-        cv2.drawContours(bg_removed, contours, -1, (0,255,0), 10)
+        cv2.drawContours(color_image, contours, -1, (0,255,0), 10)
+        
+        if len(contours) > 0:
+            M = cv2.moments(contours[0])
+            cx = int(M['m10']/M['m00']) + 1
+            cy = int(M['m01']/M['m00']) + 1
+            # stuff = np.array([cx,cy])
+            #print(cx, cy)
+            # (x,y), radius = cv2.minEnclosingCircle(stuff)
+            # center = (int(x),int(y))
+            #radius = int(radius)
+            cv2.circle(color_image,(int(cx),int(cy)), 1,(0,0,255),2)
+            profile = cfg.get_stream(rs.stream.color)
+            intrinsics = profile.as_video_stream_profile().get_intrinsics()
+
+            data = depth_image[cy][cx]*depth_scale
+
+            penPos = rs.rs2_deproject_pixel_to_point(intrinsics, [int(cx), int(cy)], data) 
+            print(penPos)
+
 
         # # Render images:
         # #   depth align to color on left
         # #   depth on right
-        # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+        #depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
         #images = np.hstack((mask)) 
         #depth_colormap))
 
+
+        
+        # profile = cfg.get_stream(rs.stream.color)
+        # points = pc.calculate(depth_image)
+        # pc.map_to(bg_removed)
+
         cv2.namedWindow('Final Image', cv2.WINDOW_NORMAL)
-        cv2.imshow('Final Image', bg_removed)
+        cv2.imshow('Final Image', color_image)
         key = cv2.waitKey(1)
+
         # Press esc or 'q' to close the image window
         if key & 0xFF == ord('q') or key == 27:
             cv2.destroyAllWindows()
