@@ -92,12 +92,12 @@ try:
 
         output = cv2.bitwise_and(hsv_image, hsv_image, mask = mask)
         
-        img_erosion = cv2.erode(mask, kernel, iterations=4)
-        img_dilation = cv2.dilate(img_erosion, kernel, iterations=4)
+        img_erosion = cv2.erode(mask, kernel, iterations=2)
+        img_dilation = cv2.dilate(img_erosion, kernel, iterations=3)
         edged = cv2.Canny(img_dilation,0, 128)
-        # contours = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         # #cnt = contours[4]
-        # file = cv2.drawContours(edged, contours, -1, (0,255,0), 3)
+        cv2.drawContours(bg_removed, contours, -1, (0,255,0), 10)
 
         # # Render images:
         # #   depth align to color on left
@@ -106,8 +106,8 @@ try:
         #images = np.hstack((mask)) 
         #depth_colormap))
 
-        cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
-        cv2.imshow('Align Example', edged)
+        cv2.namedWindow('Final Image', cv2.WINDOW_NORMAL)
+        cv2.imshow('Final Image', bg_removed)
         key = cv2.waitKey(1)
         # Press esc or 'q' to close the image window
         if key & 0xFF == ord('q') or key == 27:
