@@ -6,11 +6,12 @@ import pyrealsense2 as rs
 import numpy as np
 # Import OpenCV for easy image rendering
 import cv2
-lower = [120,40,40]
+lower = [115,100,20]
 upper = [155,255,255]
 
 lower = np.array(lower, dtype = "uint8")
 upper = np.array(upper, dtype = "uint8")
+kernel = np.ones((5,5),np.float32)/25
 
 # Create a pipeline
 pipeline = rs.pipeline()
@@ -87,20 +88,26 @@ try:
         bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), mask_color, color_image)
         hsv_image = cv2.cvtColor(bg_removed, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv_image,lower,upper)
+
+
         output = cv2.bitwise_and(hsv_image, hsv_image, mask = mask)
-        h,s,v = cv2.split(output)
-        hsv_split = np.concatenate((h,s,v), axis=1)
-        cv2.imshow("Split HSV",v)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        # Render images:
-        #   depth align to color on left
-        #   depth on right
-        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
-        images = np.hstack((output, depth_colormap))
+        
+        img_erosion = cv2.erode(mask, kernel, iterations=4)
+        img_dilation = cv2.dilate(img_erosion, kernel, iterations=4)
+        edged = cv2.Canny(img_dilation,0, 128)
+        # contours = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # #cnt = contours[4]
+        # file = cv2.drawContours(edged, contours, -1, (0,255,0), 3)
+
+        # # Render images:
+        # #   depth align to color on left
+        # #   depth on right
+        # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+        #images = np.hstack((mask)) 
+        #depth_colormap))
 
         cv2.namedWindow('Align Example', cv2.WINDOW_NORMAL)
-        cv2.imshow('Align Example', images)
+        cv2.imshow('Align Example', edged)
         key = cv2.waitKey(1)
         # Press esc or 'q' to close the image window
         if key & 0xFF == ord('q') or key == 27:
