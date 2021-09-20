@@ -1,5 +1,5 @@
 #Let's see a pen
-
+from interbotix_xs_modules.arm import InterbotixManipulatorXS
 # First import the library
 import pyrealsense2 as rs
 # Import Numpy for easy array manipulation
@@ -62,6 +62,14 @@ clipping_distance = clipping_distance_in_meters / depth_scale
 align_to = rs.stream.color
 align = rs.align(align_to)
 
+
+# The robot object is what you use to control the robot
+robot = InterbotixManipulatorXS("px100", "arm", "gripper")
+mode = 'h'
+# Let the user select the position
+
+
+
 # Streaming loop
 try:
     while True:
@@ -117,6 +125,22 @@ try:
 
             penPos = rs.rs2_deproject_pixel_to_point(intrinsics, [int(cx), int(cy)], data) 
             print(penPos)
+
+            # while mode != 'q':
+            #     mode=input("[h]ome, [s]leep, [q]uit ")
+            #     if mode == "h":
+            #         robot.arm.go_to_home_pose()
+            #         #joint_positions = [0, 0, 0, 1.57]
+            #         robot.gripper.close()
+            #         #robot.gripper.open()
+            #         # robot.arm.go_to_home_pose()
+            #         # robot.arm.set_joint_positions(joint_positions)
+
+            #         robot.arm.set_ee_cartesian_trajectory(z=-0.1)
+            #         robot.arm.set_ee_cartesian_trajectory(x=-0)
+            #         robot.arm.go_to_home_pose()
+            #     elif mode == "s":
+            #         robot.arm.go_to_sleep_pose()
 
 
         # # Render images:
